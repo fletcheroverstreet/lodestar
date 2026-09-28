@@ -1,0 +1,213 @@
+# lodestar configuration — every weight, threshold, window, and half-life
+# used anywhere in the scoring pipeline lives here. Nothing in the code
+# should have a magic number that isn't read from this file.
+#
+# Bucket weights (under composite.weights) must sum to 1.0. Metric weights
+# within a bucket must sum to 1.0. Both are validated at load time.
+
+# --------------------------------------------------------------------------
+# Universe
+# --------------------------------------------------------------------------
+universe:
+  # Optional CSV with a "ticker" column. When set, this REPLACES finlake's
+  # filing-activity-proxy universe() entirely, rather than filtering it —
+  # see DEC-011 in lodestar's vault.
+  #
+  # Now pointed at the real S&P 500 constituent list (503 names, all 11 GICS
+  # sectors, every one resolved to a CIK), built by
+  # finlake/scripts/build_universe.py. This closes ISSUE-004: the proxy
+  # universe answered "was this company filing with the SEC", which admits
+  # every shell and trust that ever filed a 10-K; a constituent list answers
+  # "was this a real, liquid, investable company", which is the question a
+  # screen is actually asking.
+  #
+  # CAVEAT, and it is a real one: this is CURRENT membership with no add/drop
+  # dates. Applying it to a past date reintroduces survivorship bias — the
+  # names dropped from the index for doing badly are exactly the ones
+  # missing. Historical runs remain honest about the universe they used.
+  constituents_file: ../finlake/universe/sp500_ndx.csv
+  # A name needs at least this many quarters of revenue history to be
+  # scored at all. Below this, growth/CAGR metrics are meaningless no
+  # matter how the coverage floor is tuned.
+  min_history_quarters: 4
+
+# --------------------------------------------------------------------------
+# Peer grouping and standardization (project spec §3)
+# --------------------------------------------------------------------------
+peer_groups:
+  # industry -> sector -> universe fallback ladder. A peer group smaller
+  # than this falls back to the next level up.
+  min_group_size: 8
+  # Winsorize at these percentiles WITHIN the peer group, before any
+  # z-scoring. One broken filing must not dominate a sector.
+  winsorize_low_pct: 0.01
+  winsorize_high_pct: 0.99
+
+# --------------------------------------------------------------------------
+# Coverage
+# --------------------------------------------------------------------------
+coverage:
+  # A bucket whose available-metric-weight fraction falls below this is
+  # marked low-confidence, excluded from the composite, and the remaining
+  # bucket weights renormalize across what's left.
+  bucket_floor: 0.5
+  # Composite-level floor. At least this fraction of the TOTAL configured
+  # bucket weight must survive the per-bucket floor before a name gets a
+  # composite score at all. Without it, a name with one surviving bucket
+  # is renormalized to 100% weight on that bucket and handed a percentile
+  # that looks as solid as a fully-covered name's — see DEC-012.
+  #
+  # A hard minimum of 2 surviving buckets also applies, in code
+  # (composite.MIN_BUCKETS_FOR_COMPOSITE) rather than here, because it's
+  # definitional rather than a tuning knob.
+  #
+  # 0.25 is deliberately well below the thinnest legitimate names in the
+  # universe: banks sit at 0.40 (ROIC is gated off for financials, see
+  # DEC-002). Raising this to 0.5 drops every bank, which is a worse
+  # failure than the one this floor exists to prevent.
+  composite_min_weight_covered: 0.25
+
+# --------------------------------------------------------------------------
+# Composite — top-level bucket weights. Must sum to 1.0.
+# --------------------------------------------------------------------------
+composite:
+  weights:
+    quality: 0.20
+    value: 0.20
+    growth: 0.15
+    capital_allocation: 0.15
+    accounting_quality: 0.10
+    momentum: 0.10
+    news: 0.10
+
+# --------------------------------------------------------------------------
+# Quality — profitability level and consistency, not just level.
+# --------------------------------------------------------------------------
+quality:
+  metrics:
+    roic: 0.30
+    roic_stability: 0.15
+    gross_margin_trend: 0.15
+    fcf_conversion: 0.20
+    interest_coverage: 0.20
+  # ROIC stability = mean(ROIC) / stdev(ROIC) over this many trailing
+  # quarters.
+  roic_stability_window_quarters: 20
+  # Gross margin trend = OLS slope over this many trailing quarters.
+  gross_margin_trend_window_quarters: 12
+  # Effective tax rate = tax_expense / pretax_income (TTM), used in
+  # NOPAT = EBIT * (1 - effective_tax_rate). This ratio is unstable near
+  # zero pretax income -- a small tax charge against near-zero pretax
+  # income can produce a rate of 300% or -150%, neither of which is a
+  # real effective tax rate. When pretax income is <= 0, or the computed
+  # rate falls outside [tax_rate_min, tax_rate_max], substitute
+  # default_tax_rate and flag the substitution rather than using the
+  # noisy computed value. See DEC-001 (effective-tax-rate stability) in
+  # lodestar's vault.
+  tax_rate_min: 0.0
+  tax_rate_max: 0.50
+  default_tax_rate: 0.21
+
+# --------------------------------------------------------------------------
+# Value — every metric inverted so higher always means cheaper/better,
+# before z-scoring (a low EV/EBIT is good, so the metric fed to the
+# z-score is 1/(EV/EBIT), not EV/EBIT itself).
+# --------------------------------------------------------------------------
+value:
+  metrics:
+    # ev_ebit is ONE metric slot, not two: EV/Sales is a substitute used
+    # INSIDE it under the conditions below, not a separately-weighted
+    # metric — see DEC-003 in lodestar's vault. The spec's own wording
+    # ("EV/Sales, used only when...") describes a substitution, not an
+    # independent signal, so there is no separate ev_sales weight here.
+    ev_ebit: 0.50
+    fcf_yield: 0.35
+    pb: 0.15
+  # EV/Sales is used in place of EV/EBIT when TTM EBIT <= 0, or when the
+  # EBIT margin falls below this floor (EV/EBIT gets noisy and can even
+  # flip sign near zero EBIT).
+  ebit_margin_floor: 0.03
+  # P/B is only computed for names in the "financials" sector (see
+  # industry_map.csv) — it's noise everywhere else.
+  pb_sector: financials
+
+# --------------------------------------------------------------------------
+# Growth
+# --------------------------------------------------------------------------
+growth:
+  metrics:
+    revenue_cagr_3y: 0.20
+    revenue_cagr_5y: 0.20
+    fcf_cagr: 0.20
+    incremental_margin: 0.20
+    reinvestment_rate: 0.20
+  incremental_margin_window_quarters: 8
+
+# --------------------------------------------------------------------------
+# Capital allocation — the bucket the project cares most about getting
+# right (buyback timing).
+# --------------------------------------------------------------------------
+capital_allocation:
+  metrics:
+    buyback_timing: 0.35
+    buyback_yield: 0.20
+    share_count_change_3y: 0.15
+    incremental_roic: 0.20
+    ma_returns: 0.10
+  # Trailing window for the dollar-weighted buyback price vs. market VWAP
+  # comparison, and for buyback yield.
+  buyback_window_quarters: 12
+  # Window for incremental ROIC (ΔNOPAT / Δinvested capital).
+  incremental_roic_window_years: 3
+
+# --------------------------------------------------------------------------
+# Accounting quality — asymmetric by design. A bad score subtracts at
+# full weight; a good score earns capped credit. Clean books are the
+# baseline, not an edge case worth rewarding heavily.
+# --------------------------------------------------------------------------
+accounting_quality:
+  metrics:
+    accrual_ratio: 0.35
+    cash_earnings_divergence: 0.30
+    beneish_m_score: 0.20
+    dso_dio_trend: 0.15
+  # Window for the DSO+DIO trend slope.
+  dso_dio_window_quarters: 12
+  # A positive (favourable) accounting-quality z-score is capped at this
+  # many standard deviations before it's allowed to add to the composite.
+  # A negative (unfavourable) z-score is never capped — it subtracts at
+  # full weight. See DEC-005 in lodestar's vault.
+  good_score_cap_z: 0.5
+
+# --------------------------------------------------------------------------
+# Momentum
+# --------------------------------------------------------------------------
+momentum:
+  metrics:
+    price_12_1: 0.40
+    fundamental_revision: 0.30
+    rank_change: 0.30
+  # Fundamental-revision proxy: TTM EPS/revenue as known today vs. as
+  # known this many days ago (via finlake's `filed` bitemporal column).
+  # Stands in for consensus-estimate revisions. finlake now captures
+  # consensus estimates, but this metric has not been moved onto them yet.
+  revision_lookback_days: 90
+
+# --------------------------------------------------------------------------
+# News signal — finlake's multi-source news store: deduplicated across
+# feeds, scored with the Loughran-McDonald financial lexicon, event-weighted
+# and time-decayed. See lodestar/metrics/news.py.
+# --------------------------------------------------------------------------
+news:
+  metrics:
+    # A single signal, not a blend -- weight 1.0 is the whole bucket, kept
+    # as an explicit metrics: entry (rather than special-cased as bucket-
+    # weight-equals-metric-weight) so every bucket's coverage/renormalize
+    # logic in scoring/coverage.py can treat all seven buckets identically.
+    news_sentiment: 1.0
+  lookback_days: 60
+  half_life_days: 20
+  # "finlake" -> FinlakeNewsProvider, reading finlake's news store.
+  # "null"    -> NullNewsProvider: zero coverage, so the bucket is excluded
+  #              and the remaining weights renormalize.
+  provider: finlake

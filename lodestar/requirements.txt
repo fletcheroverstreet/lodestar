@@ -1,0 +1,13 @@
+# finlake is pinned to the exact version this project was built and
+# verified against (see FINLAKE-FINDINGS.md). Install it in editable mode
+# from the sibling repo:
+#   pip install -e ../finlake
+# then confirm: python -c "import finlake; print(finlake.__version__)" -> 0.13.0
+
+pandas>=2.2
+numpy>=1.26
+pyarrow>=14.0
+streamlit>=1.38
+plotly>=5.22
+pyyaml>=6.0
+pytest>=8.0

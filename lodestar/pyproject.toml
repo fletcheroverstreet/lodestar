@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lodestar"
+version = "0.1.0"
+description = "Cross-industry equity ranking engine: blends fundamentals and news signal into a sector-neutral, fully-attributed score. Sits on top of finlake."
+requires-python = ">=3.12"
+readme = "README.md"
+license = {text = "MIT"}
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "pyarrow>=14.0",
+    "streamlit>=1.38",
+    "plotly>=5.22",
+    "pyyaml>=6.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["lodestar*"]
