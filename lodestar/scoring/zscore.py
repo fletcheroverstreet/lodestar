@@ -35,15 +35,48 @@ class ZScoreResult:
     peer_std: float | None
 
 
-def _peer_members(
-    ticker: str, usable: pd.Series, group_of: dict[str, str]
-) -> list[str]:
-    """Tickers (from `usable`'s index) sharing `ticker`'s group label at
-    the given grouping (industry_of or sector_of)."""
-    label = group_of.get(ticker)
-    if label is None:
-        return []
-    return [t for t in usable.index if group_of.get(t) == label]
+def _members_by_label(usable: pd.Series, group_of: dict[str, str]) -> dict[str, list[str]]:
+    """Group label -> tickers (from `usable`'s index, in index order) carrying
+    it, at one grouping (industry_of or sector_of). Tickers with no label
+    belong to no group."""
+    members: dict[str, list[str]] = {}
+    for t in usable.index:
+        label = group_of.get(t)
+        if label is not None:
+            members.setdefault(label, []).append(t)
+    return members
+
+
+@dataclass(frozen=True)
+class _PeerIndex:
+    """Everything the fallback ladder needs for one metric, built once."""
+
+    universe: list[str]
+    by_industry: dict[str, list[str]]
+    by_sector: dict[str, list[str]]
+
+    @classmethod
+    def build(cls, values: pd.Series, industry_of: dict[str, str],
+              sector_of: dict[str, str]) -> "_PeerIndex":
+        usable = values.dropna()
+        return cls(
+            universe=list(usable.index),
+            by_industry=_members_by_label(usable, industry_of),
+            by_sector=_members_by_label(usable, sector_of),
+        )
+
+    def resolve(self, ticker: str, industry_of: dict[str, str],
+                sector_of: dict[str, str], *, min_group_size: int,
+                ) -> tuple[PeerLevel, list[str]]:
+        industry_peers = self.by_industry.get(industry_of.get(ticker), [])
+        if len(industry_peers) >= min_group_size:
+            return "industry", industry_peers
+
+        sector_peers = self.by_sector.get(sector_of.get(ticker), [])
+        if len(sector_peers) >= min_group_size:
+            return "sector", sector_peers
+
+        return "universe", self.universe
 
 
 def resolve_peer_group(
@@ -57,17 +90,10 @@ def resolve_peer_group(
     """The industry -> sector -> universe fallback ladder, applied for
     ONE ticker on ONE metric. Returns the level actually used and the
     list of tickers (with usable data) making up that peer group."""
-    usable = values.dropna()
-
-    industry_peers = _peer_members(ticker, usable, industry_of)
-    if len(industry_peers) >= min_group_size:
-        return "industry", industry_peers
-
-    sector_peers = _peer_members(ticker, usable, sector_of)
-    if len(sector_peers) >= min_group_size:
-        return "sector", sector_peers
-
-    return "universe", list(usable.index)
+    level, peers = _PeerIndex.build(values, industry_of, sector_of).resolve(
+        ticker, industry_of, sector_of, min_group_size=min_group_size
+    )
+    return level, list(peers)
 
 
 def zscore_metric(
@@ -86,6 +112,14 @@ def zscore_metric(
     """
     results: dict[str, ZScoreResult] = {}
 
+    # Every ticker resolving to the same peer group shares that group's
+    # winsorized values, mean and stdev, so they are computed once per group
+    # rather than once per ticker. Recomputing them per ticker repeated the
+    # same quantile/mean/stdev ~500 times per metric -- about 30 seconds of
+    # every universe run -- for an identical answer.
+    group_stats: dict[tuple[str, ...], tuple[pd.Series, float, float]] = {}
+    peer_index = _PeerIndex.build(values, industry_of, sector_of)
+
     for ticker in values.index:
         raw = values[ticker]
         raw = None if pd.isna(raw) else float(raw)
@@ -97,11 +131,18 @@ def zscore_metric(
             )
             continue
 
-        level, peers = resolve_peer_group(
-            ticker, values, industry_of, sector_of, min_group_size=min_group_size
+        level, peers = peer_index.resolve(
+            ticker, industry_of, sector_of, min_group_size=min_group_size
         )
-        peer_values = values.loc[peers]
-        winsorized = winsorize(peer_values, low_pct=winsorize_low_pct, high_pct=winsorize_high_pct)
+        key = tuple(peers)
+        if key not in group_stats:
+            winsorized = winsorize(
+                values.loc[peers], low_pct=winsorize_low_pct, high_pct=winsorize_high_pct
+            )
+            group_stats[key] = (
+                winsorized, float(winsorized.mean()), float(winsorized.std(ddof=1))
+            )
+        winsorized, mean, std = group_stats[key]
         w_value = float(winsorized[ticker])
 
         if len(peers) < 2:
@@ -114,8 +155,6 @@ def zscore_metric(
             )
             continue
 
-        mean = float(winsorized.mean())
-        std = float(winsorized.std(ddof=1))
         z = 0.0 if std == 0 else (w_value - mean) / std
 
         results[ticker] = ZScoreResult(
