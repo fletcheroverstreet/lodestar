@@ -1,4 +1,4 @@
-# lodestar
+![lodestar: a cross-industry equity ranking engine](docs/media/banner.png)
 
 A cross-industry equity ranking engine and research hub. Scores every stock
 in an investable universe by blending fundamental data with news signal, in a
@@ -10,6 +10,8 @@ rank. A nine-page web app is how you read it.
 
 Tier 1 of an equity research stack. Sits directly on top of **finlake**, the
 point-in-time data layer, which is published as its own repository.
+
+![How finlake and lodestar fit together](docs/media/stack.png)
 
 ```powershell
 python -m lodestar daemon          # keep the data current, re-score nightly
@@ -106,6 +108,9 @@ metric is z-scored *within its own industry* before anything is blended,
 with an industry → sector → universe fallback ladder when a peer group
 is too thin. The output tells you which level was actually used for each
 name, so you know when a score is standing on thin ground.
+
+![Raw ROIC puts every utility below every chipmaker; z-scored within
+industry, the best utility outranks an average chipmaker](docs/media/peer-scoring.gif)
 
 **2. A missing number is missing, never zero.** If a metric can't be
 computed, it is dropped and the remaining weights renormalize — it never
@@ -254,6 +259,8 @@ the bucket off entirely.
 ---
 
 ## Scoring mechanics
+
+![The seven scoring steps and the bucket weights](docs/media/scoring-pipeline.png)
 
 In this exact order:
 
