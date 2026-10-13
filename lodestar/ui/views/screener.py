@@ -13,7 +13,7 @@ import streamlit as st
 
 from ...config import BUCKET_NAMES
 from .. import data as D
-from ..theme import chip, esc, html_table, is_missing, score_bar, signed, stat_strip
+from ..theme import html_table, is_missing, score_bar, signed, stat_strip
 
 # Market-cap bands, in dollars. Named rather than numeric because "mid cap"
 # is the unit a reader actually thinks in.

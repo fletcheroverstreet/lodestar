@@ -93,7 +93,7 @@ def read_universe_sectors() -> dict[str, str]:
     if not UNIVERSE_PATH.exists():
         return {}
     with open(UNIVERSE_PATH, newline="", encoding="utf-8") as fh:
-        rows = csv.DictReader(l for l in fh if not l.startswith("#"))
+        rows = csv.DictReader(line for line in fh if not line.startswith("#"))
         return {r["ticker"].strip().upper(): normalize_sector(r.get("sector"))
                 for r in rows if r.get("ticker") and r.get("sector")}
 

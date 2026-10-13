@@ -9,7 +9,6 @@ from pathlib import Path
 
 from lodestar import persistence
 from lodestar.cli import _price_start, _resolve_run, build_parser, _find_bucket_for_metric
-from lodestar.config import load_config
 from lodestar.scoring.bucket import BUCKET_METRICS
 
 REPO_CONFIG = Path(__file__).resolve().parent.parent / "config.yaml"

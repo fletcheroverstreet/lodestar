@@ -1,5 +1,7 @@
 ![lodestar: a cross-industry equity ranking engine](docs/media/banner.png)
 
+[![CI](https://github.com/fletcheroverstreet/lodestar/actions/workflows/ci.yml/badge.svg)](https://github.com/fletcheroverstreet/lodestar/actions/workflows/ci.yml)
+
 A cross-industry equity ranking engine and research hub. Scores every stock
 in an investable universe by blending fundamental data with news signal, in a
 way that survives comparing a bank to a semiconductor company.
@@ -97,6 +99,9 @@ is why once a day is the right cadence rather than continuously.
 If the daemon has been off, it works out what it missed on start and catches
 up rather than waiting a full interval. `python -m finlake refresh --status`
 shows what each tier last did.
+
+A re-score that fails is logged and retried an hour later, not on the next
+tick, and never stops the price refresh.
 
 ---
 
@@ -364,7 +369,7 @@ final z-score. Enough to tie any number back to a filing yourself.
 python -m pytest -q
 ```
 
-279 tests. Every factor formula has hand-computed fixtures — the expected
+281 tests. Every factor formula has hand-computed fixtures — the expected
 values are worked out in the test (or its comment), never by re-running the
 implementation. Dedicated tests cover the mechanics the methodology depends
 on: winsorization at the boundary, z-scores in a peer group of one, coverage
@@ -454,7 +459,7 @@ lodestar/
 │   │                     composite, attribution, ratings
 │   └── ui/               the nine-page Streamlit hub
 ├── scripts/              build_industry_map.py
-└── tests/                279 tests
+└── tests/                281 tests
 ```
 
 Comments in the code cite design decisions as `DEC-nnn` and `ISSUE-nnn`.

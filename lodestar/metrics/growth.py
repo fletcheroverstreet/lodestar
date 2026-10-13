@@ -10,7 +10,7 @@ import pandas as pd
 
 from ..config import Config
 from .base import MetricResult, TickerContext, cagr, safe_divide, ttm, ttm_series
-from .finance import ebit_ttm, nopat_ttm
+from .finance import nopat_ttm
 
 BUCKET = "growth"
 

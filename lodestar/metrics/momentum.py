@@ -9,7 +9,7 @@ import datetime as dt
 
 from ..adapter import get_fundamentals
 from ..config import Config
-from .base import MetricResult, TickerContext, safe_divide, ttm
+from .base import MetricResult, TickerContext, ttm
 
 BUCKET = "momentum"
 
