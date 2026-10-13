@@ -18,14 +18,14 @@ jobs:
     steps:
       # The same side-by-side layout the README asks for: config.yaml reads
       # the constituent list from ../finlake.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           path: lodestar
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: fletcheroverstreet/finlake
           path: finlake
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip

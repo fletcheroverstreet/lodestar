@@ -369,7 +369,7 @@ final z-score. Enough to tie any number back to a filing yourself.
 python -m pytest -q
 ```
 
-281 tests. Every factor formula has hand-computed fixtures — the expected
+282 tests. Every factor formula has hand-computed fixtures — the expected
 values are worked out in the test (or its comment), never by re-running the
 implementation. Dedicated tests cover the mechanics the methodology depends
 on: winsorization at the boundary, z-scores in a peer group of one, coverage
@@ -459,7 +459,7 @@ lodestar/
 │   │                     composite, attribution, ratings
 │   └── ui/               the nine-page Streamlit hub
 ├── scripts/              build_industry_map.py
-└── tests/                281 tests
+└── tests/                282 tests
 ```
 
 Comments in the code cite design decisions as `DEC-nnn` and `ISSUE-nnn`.
