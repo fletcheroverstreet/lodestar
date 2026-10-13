@@ -164,3 +164,36 @@ def test_zscore_extreme_value_is_winsorized_before_scoring():
     # 100000 directly -- so it must not be an absurdly large z.
     assert results["t9"].winsorized_value < 100000.0
     assert results["t9"].z < 10  # a sane bound; an unwinsorized z here would be enormous
+
+
+def test_every_ticker_is_scored_against_its_own_peer_group_on_a_mixed_universe():
+    """Peer-group statistics are computed once per group and shared, so a
+    ticker must never pick up a different group's mean or stdev. Checked
+    against a from-scratch computation for every ticker, on a universe that
+    exercises all three ladder levels: a deep industry, an industry thin
+    enough to fall back to sector, and a name with no labels at all."""
+    import numpy as np
+
+    rng = np.random.default_rng(7)
+    tickers = [f"t{i}" for i in range(40)]
+    values = pd.Series(rng.normal(size=40), index=tickers)
+    values.iloc[::9] = float("nan")
+    industry_of = {t: ("Semis" if i < 20 else "Banks" if i < 25 else "Utilities")
+                   for i, t in enumerate(tickers) if i != 39}
+    sector_of = {t: ("Tech" if i < 20 else "Financials")
+                 for i, t in enumerate(tickers) if i != 39}
+
+    results = zscore_metric(values, industry_of, sector_of, min_group_size=8,
+                            winsorize_low_pct=0.05, winsorize_high_pct=0.95)
+
+    assert {r.peer_level for r in results.values()} >= {"industry", "sector", "universe"}
+    for t, r in results.items():
+        if r.raw_value is None:
+            continue
+        level, peers = resolve_peer_group(t, values, industry_of, sector_of,
+                                          min_group_size=8)
+        w = winsorize(values.loc[peers], low_pct=0.05, high_pct=0.95)
+        assert (r.peer_level, r.peer_group_size) == (level, len(peers))
+        assert r.peer_mean == pytest.approx(float(w.mean()))
+        assert r.peer_std == pytest.approx(float(w.std(ddof=1)))
+        assert r.z == pytest.approx((float(w[t]) - w.mean()) / w.std(ddof=1))

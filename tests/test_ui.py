@@ -362,3 +362,18 @@ def test_every_news_table_cites_its_source():
         assert "_source_label(" in text, f"{name} renders news without citing a source"
         assert '{"key": "source", "label": "Source"' in text, (
             f"{name} has no Source column")
+
+
+def test_the_ui_and_the_scorer_agree_on_where_neutral_ends():
+    """The hub draws its tone chips from its own constant, and finlake's
+    scorer labels headlines from its own. If the two drift, a headline is
+    labelled neutral on one page and negative on the next.
+
+    Lives here rather than in finlake because the dependency runs this way:
+    lodestar is built on finlake, and finlake knows nothing about lodestar.
+    """
+    from finlake import lexicon
+
+    from lodestar.ui import theme
+
+    assert theme.TONE_NEUTRAL_BAND == lexicon.NEUTRAL_BAND

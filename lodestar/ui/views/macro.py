@@ -13,7 +13,7 @@ import streamlit as st
 
 from .. import charts
 from .. import data as D
-from ..theme import esc, html_table, is_missing, signed, stat_strip
+from ..theme import html_table, is_missing, signed
 
 GROUPS: dict[str, list[tuple[str, str, str]]] = {
     "Rates & the curve": [

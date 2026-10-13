@@ -35,7 +35,6 @@ words. The tables read correctly in greyscale.
 from __future__ import annotations
 
 import html as _html
-import json
 
 # ---------------------------------------------------------------------------
 # Surfaces and ink

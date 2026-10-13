@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 from lodestar.config import load_config
 from lodestar.metrics.base import TickerContext

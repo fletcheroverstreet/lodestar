@@ -12,7 +12,7 @@ not to these individual metrics.
 from __future__ import annotations
 
 from ..config import Config
-from .base import MetricResult, TickerContext, ols_slope, safe_divide, ttm
+from .base import MetricResult, TickerContext, ols_slope, ttm
 
 BUCKET = "accounting_quality"
 

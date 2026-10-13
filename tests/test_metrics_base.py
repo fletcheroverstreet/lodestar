@@ -5,7 +5,6 @@ the test (or in a comment), not by re-running the function under test."""
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 from lodestar.metrics.base import (
     TickerContext, cagr, market_cap, ols_slope, safe_divide, ttm, ttm_series,

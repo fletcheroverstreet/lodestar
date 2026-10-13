@@ -1,0 +1,29 @@
+# Credentials live in finlake/.env, never here (see README).
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Scoring runs: written by `python -m lodestar run`, rebuilt any time
+runs/
+
+# Media build tooling (docs/media/src)
+node_modules/

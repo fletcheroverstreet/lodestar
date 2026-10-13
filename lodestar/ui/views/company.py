@@ -18,7 +18,7 @@ from ...config import BUCKET_NAMES
 from .. import charts
 from .. import data as D
 from ..theme import (
-    INK_MUTED, RED, TEAL, TONE_NEUTRAL_BAND, card, chip, esc, html_table,
+    INK_MUTED, TONE_NEUTRAL_BAND, esc, html_table,
     is_missing, logo_mark, pill, score_bar, signed, stat_strip, tone_chip,
 )
 

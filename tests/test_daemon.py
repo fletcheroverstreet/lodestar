@@ -122,3 +122,18 @@ def test_the_tier_report_carries_the_coverage_note():
     src = inspect.getsource(daemon.daemon)
     assert "def _report(name, rows, seconds, note=None)" in src, (
         "the tier callback no longer accepts the coverage note")
+
+
+def test_a_failed_re_score_is_not_retried_on_the_next_tick(tmp_path):
+    """A failure leaves the newest run exactly as stale as it was, so on age
+    alone the very next tick is due again -- and a fault a retry cannot fix
+    (a version mismatch, a bad config) became a multi-minute scoring pass
+    every minute, all night. A failure holds off the next attempt."""
+    path = _runs_db(tmp_path, created_at=None)
+    failed_at = dt.datetime(2026, 8, 11, 19)
+    wait = dt.timedelta(minutes=daemon.RETRY_AFTER_FAILURE_MINUTES)
+
+    for later in (dt.timedelta(minutes=1), wait - dt.timedelta(seconds=1)):
+        assert not daemon.rescore_is_due(
+            path, now=failed_at + later, last_failure=failed_at)
+    assert daemon.rescore_is_due(path, now=failed_at + wait, last_failure=failed_at)

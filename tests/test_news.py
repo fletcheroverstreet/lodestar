@@ -63,7 +63,7 @@ def test_news_sentiment_reports_score_when_a_real_signal_is_provided(cfg):
 import dataclasses  # noqa: E402
 
 from lodestar.metrics.news import (  # noqa: E402
-    FinlakeNewsProvider, NullNewsProvider, build_provider,
+    FinlakeNewsProvider, build_provider,
 )
 
 

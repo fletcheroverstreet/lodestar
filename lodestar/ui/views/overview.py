@@ -7,7 +7,6 @@ one links into a deeper page rather than trying to be that page.
 
 from __future__ import annotations
 
-import pandas as pd
 import streamlit as st
 
 from ...scoring.ratings import groups_to_frame, rate_sectors

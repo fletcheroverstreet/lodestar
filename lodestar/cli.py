@@ -26,7 +26,7 @@ from .config import BUCKET_NAMES, load_config
 from .industry_map import load_peer_groups
 from .metrics.base import TickerContext
 from .metrics.news import build_provider
-from .scoring.attribution import TickerAttribution, compute_attribution
+from .scoring.attribution import compute_attribution
 from .scoring.bucket import BUCKET_METRICS, compute_bucket
 from .scoring.composite import compute_composite
 from .universe import build_universe, print_universe
@@ -290,15 +290,15 @@ def cmd_audit(args: argparse.Namespace) -> None:
 
     metric_fn = BUCKET_METRICS[bucket][args.metric]
     result = metric_fn(ctx, cfg)
-    print(f"\n--- Metric result ---")
+    print("\n--- Metric result ---")
     print(f"  value:        {result.value}")
     print(f"  substitution: {result.substitution}")
     print(f"  note:         {result.note}")
-    print(f"  raw_inputs:")
+    print("  raw_inputs:")
     for k, v in result.raw_inputs.items():
         print(f"    {k}: {v}")
 
-    print(f"\n--- Peer-group standardization ---")
+    print("\n--- Peer-group standardization ---")
     print(f"  Scoring the full universe ({len(tickers)} names) to get real peer statistics...")
     bucket_results, _, _ = _score_universe(tickers, as_of, cfg, peer_groups, contexts)
     zscore_result = bucket_results[bucket][ticker].zscore_results[args.metric]
