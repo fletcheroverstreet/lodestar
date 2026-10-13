@@ -1,0 +1,136 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="tokens.css">
+<style>
+  .frame { padding: 44px 56px; }
+  .eyebrow { color: var(--teal); }
+  .titles { position: relative; height: 44px; margin-top: 10px; }
+  .titles h1 { position: absolute; left: 0; top: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
+  .titles h1 span { color: var(--ink-muted); font-weight: 500; }
+  .plot { position: absolute; left: 256px; right: 72px; top: 170px; height: 330px; }
+  .lane { position: absolute; left: -200px; right: 0; height: 110px; }
+  .lane .name { position: absolute; left: 0; top: 34px; width: 180px; }
+  .lane .name b { display: block; font-size: 18px; font-weight: 600; }
+  .lane .name span { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
+  .lane .rail { position: absolute; left: 200px; right: 0; top: 54px; height: 2px; background: var(--border); }
+  .mean { position: absolute; top: 22px; width: 2px; height: 66px; margin-left: -1px; background: var(--ink-faint); }
+  .mean span { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-family: var(--mono); font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
+  .dot { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 2px solid var(--navy-deep); }
+  .ring { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 2px solid var(--ink); }
+  .callout { position: absolute; font-family: var(--mono); font-size: 13px; white-space: nowrap; color: var(--ink); background: var(--navy-raised);
+    border: 1px solid var(--border-strong); border-radius: 8px; padding: 6px 10px; transform: translateX(-50%); }
+  .callout em { font-style: normal; color: var(--teal); font-weight: 600; }
+  .axis { position: absolute; left: 0; right: 0; top: 262px; height: 1px; background: var(--border-strong); }
+  .tk { position: absolute; top: 270px; transform: translateX(-50%); font-family: var(--mono); font-size: 13px; color: var(--ink-faint); white-space: nowrap; }
+  .axname { position: absolute; left: -200px; top: 268px; font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted); }
+  .strip { position: absolute; left: 256px; right: 72px; top: 552px; height: 34px; }
+  .strip .lbl { position: absolute; left: -200px; top: 2px; width: 190px; font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted); line-height: 1.4; }
+  .strip .lbl span { color: var(--ink-faint); text-transform: none; letter-spacing: 0; }
+  .cell { position: absolute; top: 0; height: 30px; border-radius: 5px; }
+  .cell.hl { box-shadow: 0 0 0 2px var(--ink); }
+  .ends { position: absolute; top: 38px; left: 0; right: 0; font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+  .ends span:last-child { position: absolute; right: 0; }
+  .foot { position: absolute; left: 56px; right: 56px; bottom: 30px; display: flex; justify-content: space-between; align-items: baseline; }
+  .foot .m { font-size: 16px; color: var(--ink-muted); } .foot .m b { color: var(--ink); font-weight: 600; }
+  .foot .i { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
+</style></head>
+<body>
+<div class="frame rounded">
+  <div class="label eyebrow">lodestar · peer-relative scoring</div>
+  <div class="titles">
+    <h1 id="h0">A chipmaker's 60% ROIC and a utility's 6% <span>are not comparable numbers.</span></h1>
+    <h1 id="h1">So every metric is z-scored <span>inside its own industry.</span></h1>
+    <h1 id="h2">Now the best utility <span>outranks an average chipmaker.</span></h1>
+  </div>
+  <div class="plot" id="plot">
+    <div class="lane" style="top:0"><div class="name"><b>Semiconductors</b><span>10 peers</span></div><div class="rail"></div></div>
+    <div class="lane" style="top:120px"><div class="name"><b>Utilities</b><span>10 peers</span></div><div class="rail"></div></div>
+    <div class="axis"></div>
+    <div class="axname" id="axname">ROIC, raw</div>
+  </div>
+  <div class="strip" id="strip"><div class="lbl">universe rank<br><span>all 20 names</span></div><div class="ends"><span>best</span><span>worst</span></div></div>
+  <div class="foot"><span class="m">Peer groups under 8 usable names fall back to <b>sector, then universe</b>, and the output says which level was used.</span><span class="i">illustrative data</span></div>
+</div>
+<script>
+const SEMI = [18, 24, 27, 31, 33, 35, 38, 44, 52, 62];
+const UTIL = [3.1, 4.2, 4.8, 5.3, 5.6, 6.0, 6.4, 6.9, 7.5, 8.9];
+const stats = a => { const m = a.reduce((s, x) => s + x, 0) / a.length;
+  const sd = Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); return { m, sd }; };
+const S = stats(SEMI), U = stats(UTIL);
+const names = [...SEMI.map((v, i) => ({ g: 0, v, z: (v - S.m) / S.sd, i })), ...UTIL.map((v, i) => ({ g: 1, v, z: (v - U.m) / U.sd, i }))];
+const COL = ['#3987e5', '#d95926'];
+// Highlights: the best utility, and the chipmaker closest to its peer mean.
+const bestUtil = names.filter(n => n.g === 1).sort((a, b) => b.z - a.z)[0];
+const avgSemi = names.filter(n => n.g === 0).sort((a, b) => Math.abs(a.z) - Math.abs(b.z))[0];
+const rawRank = [...names].sort((a, b) => b.v - a.v); rawRank.forEach((n, k) => n.rr = k);
+const zRank = [...names].sort((a, b) => b.z - a.z); zRank.forEach((n, k) => n.zr = k);
+
+const plot = document.getElementById('plot'), strip = document.getElementById('strip');
+const PW = plot.clientWidth, SW = strip.clientWidth;
+const xRaw = v => v / 70 * PW;
+const ZMAX = 2.5, xZ = z => (z + ZMAX) / (2 * ZMAX) * PW;
+const laneY = g => (g === 0 ? 0 : 120) + 55;
+// Deterministic vertical jitter so overlapping utilities stay legible in the raw view.
+const jit = n => ((n.i * 37) % 7 - 3) * 4;
+names.forEach(n => {
+  n.el = document.createElement('div'); n.el.className = 'dot'; n.el.style.background = COL[n.g]; plot.appendChild(n.el);
+  n.cell = document.createElement('div'); n.cell.className = 'cell'; n.cell.style.background = COL[n.g]; strip.appendChild(n.cell);
+});
+const means = [0, 1].map(g => { const el = document.createElement('div'); el.className = 'mean';
+  el.innerHTML = '<span></span>'; el.style.top = (g === 0 ? 22 : 142) + 'px'; plot.appendChild(el); return el; });
+const rawTicks = [0, 10, 20, 30, 40, 50, 60, 70].map(v => { const el = document.createElement('div'); el.className = 'tk';
+  el.textContent = v + '%'; el.style.left = xRaw(v) + 'px'; plot.appendChild(el); return el; });
+const zTicks = [-2, -1, 0, 1, 2].map(z => { const el = document.createElement('div'); el.className = 'tk';
+  el.textContent = (z > 0 ? '+' : z < 0 ? '−' : '') + Math.abs(z) + 'σ'; el.style.left = xZ(z) + 'px'; plot.appendChild(el); return el; });
+const rings = [bestUtil, avgSemi].map(() => { const el = document.createElement('div'); el.className = 'ring'; plot.appendChild(el); return el; });
+const fmtZ = z => (z >= 0 ? '+' : '−') + Math.abs(z).toFixed(1) + 'σ';
+const calls = [
+  [bestUtil, `best utility · ROIC ${bestUtil.v}% → <em>${fmtZ(bestUtil.z)}</em>`, 1],
+  [avgSemi, `average chipmaker · ROIC ${avgSemi.v}% → <em>${fmtZ(avgSemi.z)}</em>`, -1],
+].map(([n, html, dir]) => { const el = document.createElement('div'); el.className = 'callout'; el.innerHTML = html; plot.appendChild(el); return { n, el, dir }; });
+
+const clamp = x => Math.min(1, Math.max(0, x));
+const ease = x => { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const seg = (t, a, b) => ease((t - a) / (b - a));
+window.DURATION = 15.0;
+
+window.render = function (t) {
+  // k: 0 = raw view, 1 = peer z view. r: strip reorder progress. h: highlight.
+  const k = seg(t, 3.6, 5.6) - seg(t, 13.4, 14.6);
+  const r = seg(t, 6.0, 7.6) - seg(t, 13.2, 14.4);
+  const h = seg(t, 8.6, 9.3) - seg(t, 12.8, 13.3);
+  const appear = n => seg(t, 0.1 + (n.g * 10 + n.i) * 0.035, 0.6 + (n.g * 10 + n.i) * 0.035);
+  const titleW = [1 - seg(t, 3.6, 4.1) + seg(t, 14.0, 14.5), seg(t, 3.9, 4.4) - seg(t, 8.3, 8.7), seg(t, 8.5, 9.0) - seg(t, 13.6, 14.1)];
+  titleW.forEach((w, i) => { const el = document.getElementById('h' + i); el.style.opacity = clamp(w); el.style.transform = `translateY(${(1 - clamp(w)) * 6}px)`; });
+  names.forEach(n => {
+    const x = xRaw(n.v) + (xZ(n.z) - xRaw(n.v)) * k;
+    const y = laneY(n.g) + jit(n) * (1 - k);
+    const a = appear(n);
+    n.el.style.left = x + 'px'; n.el.style.top = y + 'px'; n.el.style.opacity = a;
+    n.el.style.transform = `scale(${0.4 + 0.6 * a})`;
+    const dim = h > 0 && n !== bestUtil && n !== avgSemi ? 1 - 0.55 * h : 1;
+    n.el.style.opacity = a * dim;
+    const cw = SW / 20;
+    n.cell.style.width = (cw - 4) + 'px';
+    n.cell.style.left = ((n.rr + (n.zr - n.rr) * r) * cw) + 'px';
+    n.cell.style.opacity = a * dim;
+    n.cell.classList.toggle('hl', h > .5 && (n === bestUtil || n === avgSemi));
+  });
+  [S, U].forEach((st, g) => {
+    means[g].style.left = (xRaw(st.m) + (xZ(0) - xRaw(st.m)) * k) + 'px';
+    means[g].querySelector('span').textContent = k < .5 ? `peer mean ${st.m.toFixed(1)}%` : 'peer mean';
+    means[g].style.opacity = seg(t, 0.8, 1.3);
+  });
+  rawTicks.forEach(el => el.style.opacity = 1 - k);
+  zTicks.forEach(el => el.style.opacity = k);
+  document.getElementById('axname').textContent = k < .5 ? 'ROIC, raw' : 'z within peers';
+  rings.forEach((el, i) => { const n = [bestUtil, avgSemi][i];
+    el.style.left = xZ(n.z) + 'px'; el.style.top = laneY(n.g) + 'px'; el.style.opacity = h; el.style.transform = `scale(${1.4 - 0.4 * h})`; });
+  calls.forEach(({ n, el, dir }) => {
+    el.style.left = xZ(n.z) + 'px';
+    el.style.top = (laneY(n.g) + (dir > 0 ? 26 : -60)) + 'px';
+    el.style.opacity = h;
+  });
+};
+render(10);
+</script>
+</body></html>

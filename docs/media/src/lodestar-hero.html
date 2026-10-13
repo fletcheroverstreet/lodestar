@@ -1,0 +1,83 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="tokens.css">
+<style>
+  .frame { display: flex; align-items: center; gap: 48px; padding: 0 56px; }
+  .left { flex: 1 1 auto; min-width: 0; position: relative; }
+  .top, .panel { position: relative; }
+  .eyebrow { color: var(--teal); }
+  .word { font-size: 76px; font-weight: 800; letter-spacing: -0.035em; line-height: 1; margin: 14px 0 16px; display: flex; align-items: flex-start; }
+  .word svg { width: 30px; height: 30px; margin: 2px 0 0 6px; }
+  .tag { font-size: 19px; line-height: 1.45; color: var(--ink-muted); max-width: 560px; }
+  .tag b { color: var(--ink); font-weight: 600; }
+  .panel { flex: 0 0 540px; background: var(--navy); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; position: relative; }
+  .phead { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 18px; background: var(--navy-raised); border-bottom: 1px solid var(--border); }
+  .phead .t { font-family: var(--mono); font-weight: 600; font-size: 14px; }
+  .phead .s { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
+  .rows { padding: 6px 18px; font-family: var(--mono); font-size: 13px; }
+  .r { display: grid; grid-template-columns: 150px 1fr 74px; align-items: center; height: 24px; gap: 12px; }
+  .r .n { color: var(--ink-muted); white-space: nowrap; }
+  .r .n small { color: var(--ink-faint); font-size: 11px; margin-left: 4px; }
+  .r .v { text-align: right; font-weight: 600; }
+  .track { position: relative; height: 12px; }
+  .track::before { content: ''; position: absolute; left: 50%; top: -6px; bottom: -6px; width: 1px; background: var(--border-strong); }
+  .track i { position: absolute; top: 0; height: 12px; border-radius: 3px; }
+  .pos i { left: 50%; background: var(--teal); } .pos .v { color: var(--teal); }
+  .neg i { right: 50%; background: var(--red); } .neg .v { color: var(--red); }
+  .na .n, .na .v { color: var(--ink-faint); } .na .v { font-weight: 500; }
+  .na .track span { position: absolute; left: 50%; transform: translateX(-50%); top: -3px; font-size: 11px; color: var(--ink-faint); white-space: nowrap; background: var(--navy); padding: 0 6px; }
+  .comp { display: flex; justify-content: space-between; align-items: center; padding: 9px 18px; border-top: 1px solid var(--border); background: var(--navy-deep); font-family: var(--mono); font-size: 13px; color: var(--ink-muted); }
+  .comp b { color: var(--ink); font-size: 18px; font-weight: 700; }
+  .rating { color: var(--teal); background: var(--teal-wash); border: 1px solid var(--teal-dim); border-radius: 6px; padding: 2px 9px; font-weight: 600; font-size: 12px; letter-spacing: .06em; margin-left: 10px; }
+  body.social .frame { flex-direction: column; align-items: stretch; justify-content: center; gap: 30px; padding: 48px 72px 64px; }
+  body.social .top { display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; }
+  body.social .word { font-size: 100px; }
+  body.social .word svg { width: 38px; height: 38px; }
+  body.social .tag { font-size: 22px; max-width: 660px; }
+  body.social .panel { flex: none; }
+  body.social .r { grid-template-columns: 230px 1fr 90px; height: 26px; }
+  body.social .rows { font-size: 14px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: 330px; }
+  .chip { font-family: var(--mono); font-size: 13px; color: var(--ink-muted); border: 1px solid var(--border-strong); border-radius: 999px; padding: 5px 12px; }
+  .foot { position: absolute; left: 72px; right: 72px; bottom: 22px; display: flex; justify-content: space-between; font-family: var(--mono); font-size: 13px; color: var(--ink-faint); }
+</style></head>
+<body>
+<div class="frame rounded">
+  <div class="grid-bg"></div>
+  <div class="top left">
+    <div>
+      <div class="label eyebrow">Tier 1 · equity ranking engine</div>
+      <div class="word">lodestar<svg viewBox="0 0 24 24"><path d="M12 0 C13 8 16 11 24 12 C16 13 13 16 12 24 C11 16 8 13 0 12 C8 11 11 8 12 0Z" fill="#2dd4bf"/></svg></div>
+      <div class="tag">Sector-neutral scores for every stock in the universe, with <b>attribution you can trace back to a filing</b>.</div>
+    </div>
+    <div class="chips social-only">
+      <span class="chip">7 factor buckets</span><span class="chip">26 metrics</span><span class="chip">Streamlit hub</span><span class="chip">no lookahead</span><span class="chip">279 tests</span><span class="chip">MIT</span>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="phead"><span class="t">attribution · one name</span><span class="s">z within industry · illustrative</span></div>
+    <div class="rows" id="rows"></div>
+    <div class="comp"><span>composite</span><span><b>87</b> / 100<span class="rating">BUY</span></span></div>
+  </div>
+  <div class="foot social-only"><span>github.com/fletcheroverstreet/lodestar</span><span>a missing number is missing, never zero.</span></div>
+</div>
+<script>
+  window.DURATION = 0;
+  const social = innerHeight > 400;
+  document.body.classList.toggle('social', social);
+  document.body.classList.toggle('flat', social);
+  if (!social) document.querySelectorAll('.social-only').forEach(e => e.remove());
+  else document.querySelector('.top').classList.remove('left');
+  const B = [['Quality', 20, 1.31], ['Value', 20, -0.42], ['Growth', 15, 0.88], ['Capital allocation', 15, 0.35],
+             ['Accounting', 10, -0.18], ['Momentum', 10, 0.62], ['News', 10, null]];
+  const rows = document.getElementById('rows');
+  const MAX = 1.6;
+  B.forEach(([n, w, z]) => {
+    const cls = z === null ? 'na' : z >= 0 ? 'pos' : 'neg';
+    const bar = z === null ? '<span>no coverage · excluded</span>'
+      : `<i style="width:${Math.abs(z) / MAX * 50}%"></i>`;
+    const v = z === null ? 'n/a' : (z >= 0 ? '+' : '−') + Math.abs(z).toFixed(2) + 'σ';
+    rows.insertAdjacentHTML('beforeend',
+      `<div class="r ${cls}"><span class="n">${n}<small>${w}%</small></span><span class="track">${bar}</span><span class="v">${v}</span></div>`);
+  });
+</script>
+</body></html>
