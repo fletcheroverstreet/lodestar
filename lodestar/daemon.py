@@ -54,6 +54,14 @@ RESCORE_AFTER_HOURS = 20
 # rather than firing at whatever time the machine happened to boot.
 RESCORE_NOT_BEFORE_HOUR = 18
 
+# After a FAILED re-score, how long to wait before trying again. Nothing about
+# a failure moves the newest run's age, so without this the loop sees the same
+# stale run on the very next tick and starts another multi-minute scoring pass
+# -- every minute, all night, for a fault (a version mismatch, a bad config)
+# that a retry cannot fix. An hour still recovers the same evening from a
+# transient one.
+RETRY_AFTER_FAILURE_MINUTES = 60
+
 
 def _log(message: str) -> None:
     print(f"[{dt.datetime.now():%Y-%m-%d %H:%M:%S}] {message}", flush=True)
@@ -94,14 +102,20 @@ def newest_run_age_hours(db_path: Path, *,
     return ((now or dt.datetime.now()) - max(stamps)).total_seconds() / 3600.0
 
 
-def rescore_is_due(db_path: Path, *, now: dt.datetime | None = None) -> bool:
+def rescore_is_due(db_path: Path, *, now: dt.datetime | None = None,
+                   last_failure: dt.datetime | None = None) -> bool:
     """Whether the universe should be re-scored on this tick.
 
     Never scored at all counts as due immediately, whatever the hour — a
     freshly built cache with no run shows an empty hub, and waiting until
-    tonight to fix that would be obtuse.
+    tonight to fix that would be obtuse. The one exception is a re-score that
+    just failed: `last_failure` holds off the next attempt for
+    RETRY_AFTER_FAILURE_MINUTES.
     """
     now = now or dt.datetime.now()
+    if last_failure is not None and (
+            now - last_failure < dt.timedelta(minutes=RETRY_AFTER_FAILURE_MINUTES)):
+        return False
     age = newest_run_age_hours(db_path, now=now)
     if age is None:
         return True
@@ -148,6 +162,7 @@ def daemon(*, db_path: Path | None = None, config: str | None = None,
     _log(f"  newest run: "
          f"{'never scored' if age is None else f'{age:.1f}h old'}")
 
+    last_failure: dt.datetime | None = None
     while True:
         try:
             # Say what is ABOUT to run, not only what finished. The first pass
@@ -179,15 +194,18 @@ def daemon(*, db_path: Path | None = None, config: str | None = None,
             if not touched and due:
                 _log("refresh pass finished; nothing new.")
 
-            if rescore_is_due(db_path):
+            if rescore_is_due(db_path, last_failure=last_failure):
                 _log("re-scoring the universe...")
                 if run_scoring(db_path, config=config):
+                    last_failure = None
                     _log("re-score complete.")
                 else:
                     # Logged, not raised. A failed score must not stop the
                     # price refresh — a hub with yesterday's rankings and
                     # today's prices is far more useful than a stopped one.
-                    _log("re-score FAILED; prices keep refreshing.")
+                    last_failure = dt.datetime.now()
+                    _log(f"re-score FAILED; prices keep refreshing. Next "
+                         f"attempt in {RETRY_AFTER_FAILURE_MINUTES} minutes.")
         except KeyboardInterrupt:
             _log("stopped.")
             return
